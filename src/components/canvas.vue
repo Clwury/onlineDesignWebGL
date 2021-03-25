@@ -114,6 +114,8 @@ export default {
                     blankPresets.zIndex = 0
                     blankPresets.scale.set(element.scale.x, element.scale.y)
                     blankPresets.name = element.id
+                    blankPresets.type = element.type
+                    console.log(blankPresets)
                     this.container.addChild(blankPresets)
                 } else if (element.type === 'Image') {
                     let sprite = new Sprite.from(element.url)
@@ -126,8 +128,9 @@ export default {
                     sprite.x = element.x
                     sprite.y = element.y
                     sprite.name = element.id
+                    sprite.type = element.type
                     this.container.addChild(sprite)
-                    this.bindEvent(sprite, 'Image')
+                    this.bindEvent(sprite)
                     console.log(sprite.position, sprite.toGlobal(new Point(0, 0)))
 
                     // this.struct.push({
@@ -150,15 +153,16 @@ export default {
                     circle.buttonMode = true
 
                     circle.name = element.id
+                    circle.type = element.type
                     this.container.addChild(circle)
-                    this.bindEvent(circle, 'Circle')
+                    this.bindEvent(circle)
                 }
             })
             // this.app.stage.addChild(blankPresets)
         },
         // 绑定事件
-        bindEvent (graphics, type) {
-            if (type === 'Circle' || type === 'Image' || type === 'Rectange') {
+        bindEvent (graphics) {
+            if (graphics.type === 'Circle' || graphics.type === 'Image' || graphics.type === 'Rectange') {
                 let borderCir
                 let startPoint
                 let dragStatus = false
@@ -167,7 +171,7 @@ export default {
                 graphics.on('pointerover', () => {
                     console.log('指针移入')
                     if (!borderCir && this.focusedGraphics.name !== graphics.name) {
-                        if (type === 'Circle') {
+                        if (graphics.type === 'Circle') {
                             borderCir = new Graphics()
                             borderCir.beginFill(0x18a0fb)
                             borderCir.drawCircle(0, 0, 33.5)
@@ -176,7 +180,7 @@ export default {
                             borderCir.y = graphics.y
                             borderCir.zIndex = 0
                             this.container.addChild(borderCir)
-                        } else if (type === 'Image') {
+                        } else if (graphics.type === 'Image') {
                             borderCir = new Graphics()
                             borderCir.beginFill(0x18a0fb)
                             borderCir.drawRect(0, 0, graphics.width + 3, graphics.height + 3)
@@ -210,7 +214,7 @@ export default {
                     // if (this.focusedGraphics.name !== graphics.name) {
                     borderCir && borderCir.destroy()
                     borderCir = null
-                    this.focusGraphics(graphics, type)
+                    this.focusGraphics(graphics)
                     // }
                 })
                 graphics.on('pointerup', () => {
@@ -232,7 +236,7 @@ export default {
                         //     this.focusBorder.set(graphics.name, borderArr)
                         //     console.log(this.focusBorder.get(graphics.name))
                         // }
-                        this.focusGraphics(graphics, type)
+                        this.focusGraphics(graphics)
                     }
                 })
                 // graphics.on('pointertap', () => {
@@ -321,7 +325,7 @@ export default {
             }
         },
         // 划线
-        drawDash (startPoint, endPoint, alignment) {
+        drawDash (startPoint, endPoint, alignment, direction) {
             // console.log(startPoint, endPoint)
             let line = new Graphics()
             line.lineStyle(1.5, 0x18a0fb, 1, alignment)
@@ -329,6 +333,8 @@ export default {
             line.lineTo(endPoint.x, endPoint.y)
             line.x = 0
             line.y = 0
+            line.direction = direction
+            console.log(line)
             // console.log(line.position, line.width, line.height)
             // this.container.addChild(line)
             return line
@@ -342,6 +348,21 @@ export default {
             rect.endFill()
             rect.x = x
             rect.y = y
+            rect.direction = direction
+            switch (direction) {
+                case 'LEFTTOP':
+                    rect.symmetryDirection = 'RIGHTBOTTOM'
+                    break;
+                case 'RIGHTTOP':
+                    rect.symmetryDirection = 'LEFTBOTTOM'
+                    break;
+                case 'RIGHTBOTTOM':
+                    rect.symmetryDirection = 'LEFTTOP'
+                    break;
+                case 'LEFTBOTTOM':
+                    rect.symmetryDirection = 'RIGHTTOP'
+                    break;
+            }
             rect.interactive = true
             this.bindScaleEvent(rect, direction, parent)
             // this.container.addChild(rect)
@@ -353,10 +374,10 @@ export default {
             // console.log('绘制边框', graphics.width, graphics.height, graphics.x, graphics.y)
             let dx = graphics.width / 2 - 2
             let dy = graphics.height / 2 - 2
-            let line1 = this.drawDash({ x: graphics.x - dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y - dy }, 2)
-            let line2 = this.drawDash({ x: graphics.x + dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y + dy }, 2)
-            let line3 = this.drawDash({ x: graphics.x + dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y + dy }, 2)
-            let line4 = this.drawDash({ x: graphics.x - dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y - dy }, 2)
+            let line1 = this.drawDash({ x: graphics.x - dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y - dy }, 2, 'TOP')
+            let line2 = this.drawDash({ x: graphics.x + dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y + dy }, 2, 'RIGHT')
+            let line3 = this.drawDash({ x: graphics.x + dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y + dy }, 2, 'BOTTOM')
+            let line4 = this.drawDash({ x: graphics.x - dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y - dy }, 2, 'LEFT')
             
             // scalePoint1 = this.drawCir({ x: graphics.x - graphics.width / 2, y: graphics.y - graphics.width / 2 })
             // scalePoint2 = this.drawCir({ x: graphics.x + graphics.width / 2, y: graphics.y - graphics.width / 2 })
@@ -377,10 +398,10 @@ export default {
         drawFocusBorderForRect (graphics) {
             let borderArr = []
             let d = 2
-            let line1 = this.drawDash({ x: graphics.x + d, y: graphics.y }, { x: graphics.x + graphics.width - d, y: graphics.y }, 1)
-            let line2 = this.drawDash({ x: graphics.x + graphics.width, y: graphics.y + d }, { x: graphics.x + graphics.width, y: graphics.y + graphics.height - d }, 1)
-            let line3 = this.drawDash({ x: graphics.x + graphics.width - d, y: graphics.y + graphics.height }, { x: graphics.x + d, y: graphics.y + graphics.height }, 1)
-            let line4 = this.drawDash({ x: graphics.x, y: graphics.y + graphics.height - d }, { x: graphics.x, y: graphics.y + d }, 1)
+            let line1 = this.drawDash({ x: graphics.x + d, y: graphics.y }, { x: graphics.x + graphics.width - d, y: graphics.y }, 1, 'TOP')
+            let line2 = this.drawDash({ x: graphics.x + graphics.width, y: graphics.y + d }, { x: graphics.x + graphics.width, y: graphics.y + graphics.height - d }, 1, 'RIGHT')
+            let line3 = this.drawDash({ x: graphics.x + graphics.width - d, y: graphics.y + graphics.height }, { x: graphics.x + d, y: graphics.y + graphics.height }, 1, 'BOTTOM')
+            let line4 = this.drawDash({ x: graphics.x, y: graphics.y + graphics.height - d }, { x: graphics.x, y: graphics.y + d }, 1, 'LEFT')
             
             d = 3
             let scalePoint1 = this.drawRect(graphics.x - d, graphics.y - d, 6, 6, 'LEFTTOP', graphics)
@@ -391,12 +412,12 @@ export default {
             return borderArr
         },
         // 元素聚焦
-        focusGraphics (graphics, type) {
+        focusGraphics (graphics) {
             console.log('事件对象', graphics.name)
             let borderArr = []
-            if (type === 'Circle') {
+            if (graphics.type === 'Circle') {
                 borderArr = this.drawFocusBorderForCircle(graphics)
-            } else if (type === 'Image') {
+            } else if (graphics.type === 'Image') {
                 borderArr = this.drawFocusBorderForRect(graphics)
             }
             // console.log('边框', borderArr)
@@ -444,24 +465,27 @@ export default {
             })
             graphics.on('pointermove', (event) => {
                 if (dragStatus) {
-                    let dx = event.data.getLocalPosition(this.container).x - startPoint.x
-                    let dy = event.data.getLocalPosition(this.container).y - startPoint.y
+                    let currentPoint = {
+                        x: event.data.getLocalPosition(this.container).x,
+                        y: event.data.getLocalPosition(this.container).y
+                    }
+                    let dx = currentPoint.x - startPoint.x
+                    let dy = currentPoint.y - startPoint.y
                     console.log(parent)
                     switch (direction) {
                         case 'LEFTTOP':
                             // parent.pivot.x = parent.x + parent.width
                             // parent.pivot.y = parent.y + parent.height
-                            dx = -dx
-                            dy = -dy
-                            parent.x = event.data.getLocalPosition(this.container).x
-                            parent.y = event.data.getLocalPosition(this.container).y
-                            parent.width += dx
-                            parent.height += dy
+                            // dx = -dx
+                            // dy = -dy
+                            parent.width -= dx
+                            parent.height -= dy
                             break;
                         case 'RIGHTTOP':
                             // parent.pivot.x = parent.x
                             // parent.pivot.y = parent.y + parent.height
-                            dy = -dy
+                            parent.width += dx
+                            parent.height -= dy
                             break;
                         case 'RIGHTBOTTOM':
                             // parent.pivot.x = 0
@@ -472,20 +496,109 @@ export default {
                         case 'LEFTBOTTOM':
                             // parent.pivot.x = parent.x + parent.width
                             // parent.pivot.y = parent.y
-                            dx = -dx
+                            parent.width -= dx
+                            parent.height += dy
                             break;
                     }
+                    this.computeGraphicsScaledPosition(parent, currentPoint, direction)
+                    this.computeBorderScaledPosition(parent, currentPoint, direction, dx, dy)
                     console.log('缩放位移', dx, dy, 'pivot', parent.pivot, 'position', parent.position, direction)
                     // parent.scale.x = (parent.width + dx) / parent.width
                     // parent.scale.y = (parent.height + dy) / parent.height
                     // parent.scale.set(1.2, 1.2)
+
                     
-                    startPoint = { x: event.data.getLocalPosition(this.container).x, y: event.data.getLocalPosition(this.container).y }
+                    startPoint = currentPoint
                     console.log('缩放后', startPoint)
                 }
             })
+        },
+        // 计算缩放后位置
+        computeGraphicsScaledPosition (graphics, currentPoint, direction) {
+            if (graphics.type === 'Rectangle' || graphics.type === 'Image') {
+                switch (direction) {
+                    case 'LEFTTOP':
+                        graphics.x = currentPoint.x
+                        graphics.y = currentPoint.y
+                        break;
+                    case 'RIGHTTOP':
+                        graphics.x = currentPoint.x - graphics.width
+                        graphics.y = currentPoint.y
+                        break;
+                    case 'RIGHTBOTTOM':
+                        graphics.x = currentPoint.x - graphics.width
+                        graphics.y = currentPoint.y - graphics.height
+                        break;
+                    case 'LEFTBOTTOM':
+                        graphics.x = currentPoint.x
+                        graphics.y = currentPoint.y - graphics.height
+                        break;
+                }
+            } else if (graphics.type === 'Circle') {
+                switch (direction) {
+                    case 'LEFTTOP':
+                        graphics.x = currentPoint.x + graphics.width / 2
+                        graphics.y = currentPoint.y + graphics.height / 2
+                        break;
+                    case 'RIGHTTOP':
+                        graphics.x = currentPoint.x - graphics.width / 2
+                        graphics.y = currentPoint.y + graphics.height / 2
+                        break;
+                    case 'RIGHTBOTTOM':
+                        graphics.x = currentPoint.x - graphics.width / 2
+                        graphics.y = currentPoint.y - graphics.height / 2
+                        break;
+                    case 'LEFTBOTTOM':
+                        graphics.x = currentPoint.x + graphics.width / 2
+                        graphics.y = currentPoint.y - graphics.height / 2
+                        break;
+                }
+            }
+        },
+        // 计算边框缩放位置
+        computeBorderScaledPosition (graphics, currentPoint, direction, dx, dy) {
+            let d = this.focusBorder.get(graphics.name)
+            for (let index = 4; index < d.length; index++) {
+                const e = d[index]
+                console.log('触点', e)
+                if (e.symmetryDirection === direction) {
+                    continue
+                }
+                console.log('需要更新的触点', e.symmetryDirection, direction)
+                this.computePoint(e, direction, dx, dy)
+            }
+        },
+        // 线段
+        computeLine () {
+
+        },
+        // 触点
+        computePoint (graphics, direction, dx, dy) {
+            switch (direction) {
+                case 'LEFTTOP':
+                    if (graphics.direction === 'LEFTTOP') {
+                        graphics.x += dx
+                        graphics.y += dy
+                    }
+                    if (graphics.direction === 'RIGHTTOP') {
+                        graphics.y += dy
+                    }
+                    if (graphics.direction === 'LEFTBOTTOM') {
+                        graphics.x += dx
+                    }
+                    
+                    break;
+                case 'RIGHTTOP':
+
+                    break;
+                case 'RIGHTBOTTOM':
+
+                    break;
+                case 'LEFTBOTTOM':
+
+                    break;
+            }
         }
-        
         // canvas全局事件监听
         // appStageEvent (appView) {
         //     appView.on('')
