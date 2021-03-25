@@ -331,10 +331,12 @@ export default {
             line.lineStyle(1.5, 0x18a0fb, 1, alignment)
             line.moveTo(startPoint.x, startPoint.y)
             line.lineTo(endPoint.x, endPoint.y)
-            line.x = 0
-            line.y = 0
+            // line.x = 0
+            // line.y = 0
+            line.start = startPoint
+            line.end = endPoint
             line.direction = direction
-            console.log(line)
+            console.log(line.position)
             // console.log(line.position, line.width, line.height)
             // this.container.addChild(line)
             return line
@@ -501,7 +503,7 @@ export default {
                             break;
                     }
                     this.computeGraphicsScaledPosition(parent, currentPoint, direction)
-                    this.computeBorderScaledPosition(parent, currentPoint, direction, dx, dy)
+                    this.computeBorderScaledPosition(parent, direction, dx, dy)
                     console.log('缩放位移', dx, dy, 'pivot', parent.pivot, 'position', parent.position, direction)
                     // parent.scale.x = (parent.width + dx) / parent.width
                     // parent.scale.y = (parent.height + dy) / parent.height
@@ -556,7 +558,7 @@ export default {
             }
         },
         // 计算边框缩放位置
-        computeBorderScaledPosition (graphics, currentPoint, direction, dx, dy) {
+        computeBorderScaledPosition (graphics, direction, dx, dy) {
             let d = this.focusBorder.get(graphics.name)
             for (let index = 4; index < d.length; index++) {
                 const e = d[index]
@@ -567,10 +569,55 @@ export default {
                 console.log('需要更新的触点', e.symmetryDirection, direction)
                 this.computePoint(e, direction, dx, dy)
             }
+            for (let index = 0; index < 4; index ++) {
+                const l = d[index]
+                this.computeLine(l, direction, dx, dy)
+            }
         },
         // 线段
-        computeLine () {
+        computeLine (graphics, direction, dx, dy) {
+            switch (direction) {
+                case 'LEFTTOP':
+                    console.log('线', graphics.start, graphics.end)
+                    if (graphics.direction === 'RIGHT') {
+                        graphics.moveTo(graphics.start.x, graphics.start.y + dy)
+                        graphics.lineTo(graphics.end.x, graphics.end.y)
+                        graphics.start.y = graphics.start.y + dy
+                    }
+                    if (graphics.direction === 'BOTTOM') {
+                        graphics.moveTo(graphics.start.x, graphics.start.y)
+                        graphics.lineTo(graphics.end.x + dx, graphics.end.y)
+                        graphics.end.x = graphics.end.x + dx
+                    }
+                    if (graphics.direction === 'LEFT') {
+                        graphics.moveTo(graphics.start.x + dx, graphics.start.y)
+                        graphics.lineTo(graphics.end.x + dx, graphics.end.y + dy)
+                        graphics.start.x = graphics.start.x + dx
+                        graphics.end = {
+                            x: graphics.end.x + dx,
+                            y: graphics.end.y + dy
+                        }
+                    }
+                    if (graphics.direction === 'TOP') {
+                        graphics.moveTo(graphics.start.x + dx, graphics.start.y + dy)
+                        graphics.lineTo(graphics.end.x, graphics.end.y + dy)
+                        graphics.start = {
+                            x: graphics.start.x + dx,
+                            y: graphics.start.y + dy
+                        }
+                        graphics.end.y = graphics.end.y + dy
+                    }
+                    break;
+                case 'RIGHTTOP':
 
+                    break;
+                case 'RIGHTBOTTOM':
+
+                    break;
+                case 'LEFTBOTTOM':
+
+                    break;
+            }
         },
         // 触点
         computePoint (graphics, direction, dx, dy) {
