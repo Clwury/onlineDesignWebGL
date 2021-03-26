@@ -26,11 +26,13 @@ export default {
                 children: [
                     {
                         id: 'blankPresets',
+                        stage: true,
                         x: 0,
                         y: 0,
                         width: 485,
                         height: 975,
                         type: 'Rectangle',
+                        color: 0xffffff,
                         scale: {
                             x: 0.8,
                             y: 0.8
@@ -53,6 +55,21 @@ export default {
                         y: 200,
                         radius: 32,
                         type: 'Circle',
+                        color: 0xc4c4c4,
+                        scale: {
+                            x: 1,
+                            y: 1
+                        },
+                        zIndex: 1
+                    },
+                    {
+                        id: 'rect1',
+                        x: 200,
+                        y: 300,
+                        width: 100,
+                        height: 1.5,
+                        type: 'Rectangle',
+                        color: 0xc4c4c4,
                         scale: {
                             x: 1,
                             y: 1
@@ -91,7 +108,7 @@ export default {
         stagePointer () {
             this.cursorStatus = 'cursor_pointer'
         },
-        parseCanvasData (canvasData) {  
+        parseCanvasData (canvasData) {
             // // 父容器
             this.container = new Container()
             this.container.x = canvasData.x
@@ -106,17 +123,24 @@ export default {
             canvasData.children.forEach(element => {
                 if (element.type === 'Rectangle') {
                     let blankPresets = new Graphics()
-                    blankPresets.beginFill(0xffffff)
+                    blankPresets.beginFill(element.color)
                     blankPresets.drawRect(0, 0, element.width, element.height)
                     blankPresets.endFill()
                     blankPresets.x = element.x
                     blankPresets.y = element.y
-                    blankPresets.zIndex = 0
+                    blankPresets.zIndex = element.zIndex
                     blankPresets.scale.set(element.scale.x, element.scale.y)
+
+                    if (!element.stage) {
+                        blankPresets.interactive = true
+                        blankPresets.buttonMode = true
+                    }
+
                     blankPresets.name = element.id
                     blankPresets.type = element.type
                     console.log(blankPresets)
                     this.container.addChild(blankPresets)
+                    this.bindEvent(blankPresets)
                 } else if (element.type === 'Image') {
                     let sprite = new Sprite.from(element.url)
                     sprite.width = 180
@@ -162,10 +186,11 @@ export default {
         },
         // 绑定事件
         bindEvent (graphics) {
-            if (graphics.type === 'Circle' || graphics.type === 'Image' || graphics.type === 'Rectange') {
+            if (graphics.type === 'Circle' || graphics.type === 'Image' || graphics.type === 'Rectangle') {
                 let borderCir
                 let startPoint
                 let dragStatus = false
+                console.log('注册组件id', graphics.name)
                 // let line1, line2, line3, line4
                 // let scalePoint1, scalePoint2, scalePoint3, scalePoint4
                 graphics.on('pointerover', () => {
@@ -180,7 +205,7 @@ export default {
                             borderCir.y = graphics.y
                             borderCir.zIndex = 0
                             this.container.addChild(borderCir)
-                        } else if (graphics.type === 'Image') {
+                        } else if (graphics.type === 'Image' || graphics.type === 'Rectangle') {
                             borderCir = new Graphics()
                             borderCir.beginFill(0x18a0fb)
                             borderCir.drawRect(0, 0, graphics.width + 3, graphics.height + 3)
@@ -351,6 +376,8 @@ export default {
             rect.x = x
             rect.y = y
             rect.direction = direction
+            rect.centerPoint = { x: rect.x + rect.width / 2, y: rect.y + rect.height }
+            console.log('中心点', rect.x + rect.width / 2, rect.y + rect.height / 2, '父中心点', parent.x, parent.y)
             switch (direction) {
                 case 'LEFTTOP':
                     rect.symmetryDirection = 'RIGHTBOTTOM'
@@ -419,7 +446,7 @@ export default {
             let borderArr = []
             if (graphics.type === 'Circle') {
                 borderArr = this.drawFocusBorderForCircle(graphics)
-            } else if (graphics.type === 'Image') {
+            } else if (graphics.type === 'Image' || graphics.type === 'Rectangle') {
                 borderArr = this.drawFocusBorderForRect(graphics)
             }
             // console.log('边框', borderArr)
@@ -459,6 +486,8 @@ export default {
                 startPoint = {
                     x: event.data.getLocalPosition(this.container).x,
                     y: event.data.getLocalPosition(this.container).y
+                    // x: graphics.centerPoint.x,
+                    // y: graphics.centerPoint.y
                 }
                 console.log(startPoint)
             })
@@ -509,7 +538,6 @@ export default {
                     // parent.scale.y = (parent.height + dy) / parent.height
                     // parent.scale.set(1.2, 1.2)
 
-                    
                     startPoint = currentPoint
                     console.log('缩放后', startPoint)
                 }
@@ -559,63 +587,197 @@ export default {
         },
         // 计算边框缩放位置
         computeBorderScaledPosition (graphics, direction, dx, dy) {
+            let alignment = graphics.type === 'Circle' ? 2 : 1
             let d = this.focusBorder.get(graphics.name)
             for (let index = 4; index < d.length; index++) {
                 const e = d[index]
-                console.log('触点', e)
                 if (e.symmetryDirection === direction) {
                     continue
                 }
-                console.log('需要更新的触点', e.symmetryDirection, direction)
+                // console.log('需要更新的触点', e.symmetryDirection, direction)
                 this.computePoint(e, direction, dx, dy)
             }
-            for (let index = 0; index < 4; index ++) {
-                const l = d[index]
-                this.computeLine(l, direction, dx, dy)
+            for (let i = 0; i < 4; i++) {
+                let l = d[i]
+                const start = l.start
+                const end = l.end
+                const lineDirection = l.direction
+                l.destroy() && (l = null)
+                d[i] = this.computeLine(start, end, lineDirection, direction, dx, dy, alignment)
+                this.container.addChild(d[i])
             }
         },
         // 线段
-        computeLine (graphics, direction, dx, dy) {
+        computeLine (beforeStart, beforeEnd, lineDirection, direction, dx, dy, alignment) {
             switch (direction) {
                 case 'LEFTTOP':
-                    console.log('线', graphics.start, graphics.end)
-                    if (graphics.direction === 'RIGHT') {
-                        graphics.moveTo(graphics.start.x, graphics.start.y + dy)
-                        graphics.lineTo(graphics.end.x, graphics.end.y)
-                        graphics.start.y = graphics.start.y + dy
+                    console.log('线', beforeStart, beforeEnd)
+                    if (lineDirection === 'RIGHT') {
+                        let line2 = new Graphics()
+                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.start = { x: beforeStart.x, y: beforeStart.y + dy }
+                        line2.end = { x: beforeEnd.x, y: beforeEnd.y }
+                        line2.direction = lineDirection
+                        line2.moveTo(line2.start.x, line2.start.y)
+                        line2.lineTo(line2.end.x, line2.end.y)
+                        return line2
                     }
-                    if (graphics.direction === 'BOTTOM') {
-                        graphics.moveTo(graphics.start.x, graphics.start.y)
-                        graphics.lineTo(graphics.end.x + dx, graphics.end.y)
-                        graphics.end.x = graphics.end.x + dx
+                    if (lineDirection === 'BOTTOM') {
+                        let line3 = new Graphics()
+                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.start = { x: beforeStart.x, y: beforeStart.y }
+                        line3.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
+                        line3.direction = lineDirection
+                        line3.moveTo(line3.start.x, line3.start.y)
+                        line3.lineTo(line3.end.x, line3.end.y)
+                        return line3
                     }
-                    if (graphics.direction === 'LEFT') {
-                        graphics.moveTo(graphics.start.x + dx, graphics.start.y)
-                        graphics.lineTo(graphics.end.x + dx, graphics.end.y + dy)
-                        graphics.start.x = graphics.start.x + dx
-                        graphics.end = {
-                            x: graphics.end.x + dx,
-                            y: graphics.end.y + dy
-                        }
+                    if (lineDirection === 'LEFT') {
+                        let line4 = new Graphics()
+                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.start = { x: beforeStart.x + dx, y: beforeStart.y }
+                        line4.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
+                        line4.direction = lineDirection
+                        line4.moveTo(line4.start.x, line4.start.y)
+                        line4.lineTo(line4.end.x, line4.end.y)
+                        return line4
                     }
-                    if (graphics.direction === 'TOP') {
-                        graphics.moveTo(graphics.start.x + dx, graphics.start.y + dy)
-                        graphics.lineTo(graphics.end.x, graphics.end.y + dy)
-                        graphics.start = {
-                            x: graphics.start.x + dx,
-                            y: graphics.start.y + dy
-                        }
-                        graphics.end.y = graphics.end.y + dy
+                    if (lineDirection === 'TOP') {
+                        let line1 = new Graphics()
+                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
+                        line1.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
+                        line1.direction = lineDirection
+                        line1.moveTo(line1.start.x, line1.start.y)
+                        line1.lineTo(line1.end.x, line1.end.y)
+                        return line1
                     }
                     break;
                 case 'RIGHTTOP':
-
+                    if (lineDirection === 'LEFT') {
+                        let line4 = new Graphics()
+                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.start = { x: beforeStart.x, y: beforeStart.y }
+                        line4.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
+                        line4.direction = lineDirection
+                        line4.moveTo(line4.start.x, line4.start.y)
+                        line4.lineTo(line4.end.x, line4.end.y)
+                        return line4
+                    }
+                    if (lineDirection === 'BOTTOM') {
+                        let line3 = new Graphics()
+                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.start = { x: beforeStart.x + dx, y: beforeStart.y }
+                        line3.end = { x: beforeEnd.x, y: beforeEnd.y }
+                        line3.direction = lineDirection
+                        line3.moveTo(line3.start.x, line3.start.y)
+                        line3.lineTo(line3.end.x, line3.end.y)
+                        return line3
+                    }
+                    if (lineDirection === 'RIGHT') {
+                        let line2 = new Graphics()
+                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
+                        line2.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
+                        line2.direction = lineDirection
+                        line2.moveTo(line2.start.x, line2.start.y)
+                        line2.lineTo(line2.end.x, line2.end.y)
+                        return line2
+                    }
+                    if (lineDirection === 'TOP') {
+                        let line1 = new Graphics()
+                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.start = { x: beforeStart.x, y: beforeStart.y + dy }
+                        line1.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
+                        line1.direction = lineDirection
+                        line1.moveTo(line1.start.x, line1.start.y)
+                        line1.lineTo(line1.end.x, line1.end.y)
+                        return line1
+                    }
                     break;
                 case 'RIGHTBOTTOM':
-
+                    if (lineDirection === 'LEFT') {
+                        let line4 = new Graphics()
+                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.start = { x: beforeStart.x, y: beforeStart.y + dy }
+                        line4.end = { x: beforeEnd.x, y: beforeEnd.y }
+                        line4.direction = lineDirection
+                        line4.moveTo(line4.start.x, line4.start.y)
+                        line4.lineTo(line4.end.x, line4.end.y)
+                        return line4
+                    }
+                    if (lineDirection === 'TOP') {
+                        let line1 = new Graphics()
+                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.start = { x: beforeStart.x, y: beforeStart.y }
+                        line1.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
+                        line1.direction = lineDirection
+                        line1.moveTo(line1.start.x, line1.start.y)
+                        line1.lineTo(line1.end.x, line1.end.y)
+                        return line1
+                    }
+                    if (lineDirection === 'RIGHT') {
+                        let line2 = new Graphics()
+                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.start = { x: beforeStart.x + dx, y: beforeStart.y }
+                        line2.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
+                        line2.direction = lineDirection
+                        line2.moveTo(line2.start.x, line2.start.y)
+                        line2.lineTo(line2.end.x, line2.end.y)
+                        return line2
+                    }
+                    if (lineDirection === 'BOTTOM') {
+                        let line3 = new Graphics()
+                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
+                        line3.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
+                        line3.direction = lineDirection
+                        line3.moveTo(line3.start.x, line3.start.y)
+                        line3.lineTo(line3.end.x, line3.end.y)
+                        return line3
+                    }
                     break;
                 case 'LEFTBOTTOM':
-
+                    if (lineDirection === 'RIGHT') {
+                        let line2 = new Graphics()
+                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.start = { x: beforeStart.x, y: beforeStart.y }
+                        line2.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
+                        line2.direction = lineDirection
+                        line2.moveTo(line2.start.x, line2.start.y)
+                        line2.lineTo(line2.end.x, line2.end.y)
+                        return line2
+                    }
+                    if (lineDirection === 'TOP') {
+                        let line1 = new Graphics()
+                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.start = { x: beforeStart.x + dx, y: beforeStart.y }
+                        line1.end = { x: beforeEnd.x, y: beforeEnd.y }
+                        line1.direction = lineDirection
+                        line1.moveTo(line1.start.x, line1.start.y)
+                        line1.lineTo(line1.end.x, line1.end.y)
+                        return line1
+                    }
+                    if (lineDirection === 'LEFT') {
+                        let line4 = new Graphics()
+                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
+                        line4.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
+                        line4.direction = lineDirection
+                        line4.moveTo(line4.start.x, line4.start.y)
+                        line4.lineTo(line4.end.x, line4.end.y)
+                        return line4
+                    }
+                    if (lineDirection === 'BOTTOM') {
+                        let line3 = new Graphics()
+                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.start = { x: beforeStart.x, y: beforeStart.y + dy }
+                        line3.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
+                        line3.direction = lineDirection
+                        line3.moveTo(line3.start.x, line3.start.y)
+                        line3.lineTo(line3.end.x, line3.end.y)
+                        return line3
+                    }
                     break;
             }
         },
@@ -633,16 +795,42 @@ export default {
                     if (graphics.direction === 'LEFTBOTTOM') {
                         graphics.x += dx
                     }
-                    
                     break;
                 case 'RIGHTTOP':
-
+                    if (graphics.direction === 'RIGHTTOP') {
+                        graphics.x += dx
+                        graphics.y += dy
+                    }
+                    if (graphics.direction === 'LEFTTOP') {
+                        graphics.y += dy
+                    }
+                    if (graphics.direction === 'RIGHTBOTTOM') {
+                        graphics.x += dx
+                    }
                     break;
                 case 'RIGHTBOTTOM':
-
+                    if (graphics.direction === 'RIGHTBOTTOM') {
+                        graphics.x += dx
+                        graphics.y += dy
+                    }
+                    if (graphics.direction === 'RIGHTTOP') {
+                        graphics.x += dx
+                    }
+                    if (graphics.direction === 'LEFTBOTTOM') {
+                        graphics.y += dy
+                    }
                     break;
                 case 'LEFTBOTTOM':
-
+                    if (graphics.direction === 'LEFTBOTTOM') {
+                        graphics.x += dx
+                        graphics.y += dy
+                    }
+                    if (graphics.direction === 'LEFTTOP') {
+                        graphics.x += dx
+                    }
+                    if (graphics.direction === 'RIGHTBOTTOM') {
+                        graphics.y += dy
+                    }
                     break;
             }
         }
@@ -711,4 +899,8 @@ export default {
 .cursor_nesw-resize {
     cursor: nesw-resize !important;
 }
+.curson_rt-scale {
+    cursor:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEJElEQVRYR+2Wb0hbZxTGn0Rr7J9ETNdcMsUMw/yDk2lkiJC4DAY6FZ2MyWDOeTdB7GTCpkNwI7FTYTAUNYQxtkCjDKfSD04NhoFK/BAWiJ1mDiWwaOJsu8YuumprbDqO3EJLTaLbFb/0wv2S9715f/c5z3nOFeCUL8Epn49nAM8UOIoCtCfG5/NlJScn/w7gAXfz4t9oALQuqqmpuWgymX7d2dmZkEgkjQB2AezzQRAJQEiHT0xMqEtKSqx1dXU3GhsbxVKp9HuFQqEHcJeDCP0fkHAAB4c7nc63c3Nzr5aXl28uLS2J3W73GTosEAjM+v3+sZGRkdHW1tZbAIL/tSzhAM5MTU29otForlZUVFzyeDznJRJJMD4+/iHDMHtZWVlBrVYbr1Kp7oVCoYmxsbEulmXXAOwBeHgcRcIBiABI5+fnryQlJb2rVCpF29vbwt7e3k2n0xnyeDznVldXz+7u7j5gWfZme3s7XC7Xp3l5eT8BuH8cNcIqACARQPLMzEyLRCIprqysvFBcXBwwGAxir9e7wjBMitFovKvX6+WpqambCwsLUq/X25GSkvIVZ1LqlqhXJA+cA/AcgKTZ2dmP9/f3X8vPz49RqVSfrKysBGpraxXV1dWatLS0V1mWFdvt9ji/3y9wOBzvazSaawB2AEQ1aKQuiAVAEBcByBwOx2Wz2Tzd39//G4B7AGg9Qa/Xq3U63ZdlZWV3FhcXxdPT07Fut7u8qKjoZ25fRE9Ey4EYAOcBiDkYkpXejOpMa/S7rLS09KXx8fHvGIbZz8zMvG+xWG51dXW90dHR8QdnzLCliAZAD9JBcdwbk6TUchRC9Gw85xW5xWL5aG1trby+vj5xYGDgdnZ29tc5OTlGAP9E6oyjABAE7aOb5HxcUsoLgiCvpHi9XmNnZ+fzPp9PaDKZrstksncA3OGgD1XhqACR3EwQFwDIR0dHP/T7/e/pdDrp+vp6THd39+stLS2/cGU7MQD6Y8qNSwBeWF5enkxPTxcHAgFsbGx8k5GR8QWAv8PNDj4UOPBCQ0PDiz09PVaRSMQIBALMzc39FRsbG5LL5T8qFAqCoNnxVDbwARBjtVpz1Wr1QHNzc6JQKBQZjcaEoaGh221tbQeGVCgUP8jl8s8Pa0s+AKhDEl0u1xWBQFBVVVUl3tvbC8XFxQlUKtWW2WyWFhYWvmyz2agln+oIPgBoQiZQbNtsts+USuWbSqXyrFar3ZqcnJQ0NTV90NfXNwvgJmfGJ4KJDwDqgkeJmUyxXVBQ8FYwGNwaHh7+lmXZIQB/ckakafnExQfAo7CixKQ8YOx2++XBwcEZg8FwHcANAJvhYpkvgMchqBykCDmear7FHX7oYOITgCBoQJEn6KZak+QU3WGnIt8AkWL7RJMw6odHuA0nocCxYE4d4F/thnAw5DSHgQAAAABJRU5ErkJggg==")15 15,auto !important;
+}
+
 </style>
