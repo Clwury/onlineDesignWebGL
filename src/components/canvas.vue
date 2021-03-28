@@ -1,7 +1,7 @@
 <template>
     <div style="position: relative;flex: 1 1 auto;">
         <div class="container-view">
-            <div class="canvas-view" :class="cursorStatus" @keyup.space="stagePointer"></div>
+            <div class="canvas-view" :class="cursorStatus"></div>
             <div class="layer-view"></div>
         </div>
         <div class="propertiesPanelContainer"></div>
@@ -64,17 +64,17 @@ export default {
                     },
                     {
                         id: 'rect1',
-                        x: 200,
-                        y: 300,
-                        width: 100,
-                        height: 1.5,
+                        x: 18,
+                        y: 18,
+                        width: 5,
+                        height: 5,
                         type: 'Rectangle',
                         color: 0xc4c4c4,
                         scale: {
                             x: 1,
                             y: 1
                         },
-                        zIndex: 1
+                        zIndex: 3
                     }
                 ]
             },
@@ -103,9 +103,21 @@ export default {
                 this.app.stage.scale.y += step
             }
         })
+
+        document.onkeydown = (event) => {
+            if (event.key === ' ') {
+                this.cursorStatus = 'cursor_pointer'
+            }
+        }
+        document.onkeyup = (event) => {
+            if (event.key === ' ') {
+                this.cursorStatus = ''
+            }
+        }
     },
     methods: {
         stagePointer () {
+            console.log('按下空格')
             this.cursorStatus = 'cursor_pointer'
         },
         parseCanvasData (canvasData) {
@@ -350,10 +362,10 @@ export default {
             }
         },
         // 划线
-        drawDash (startPoint, endPoint, alignment, direction) {
+        drawDash (startPoint, endPoint, direction) {
             // console.log(startPoint, endPoint)
             let line = new Graphics()
-            line.lineStyle(1.5, 0x18a0fb, 1, alignment)
+            line.lineStyle(1, 0x18a0fb, 1, 1)
             line.moveTo(startPoint.x, startPoint.y)
             line.lineTo(endPoint.x, endPoint.y)
             // line.x = 0
@@ -370,14 +382,16 @@ export default {
         drawRect (x, y, width, height, direction, parent) {
             let rect = new Graphics()
             rect.beginFill(0xffffff)
-            rect.lineStyle(1.5, 0x18a0fb, 1)
+            rect.lineStyle(1, 0x18a0fb, 1)
             rect.drawRect(0, 0, width, height)
             rect.endFill()
             rect.x = x
             rect.y = y
             rect.direction = direction
-            rect.centerPoint = { x: rect.x + rect.width / 2, y: rect.y + rect.height }
-            console.log('中心点', rect.x + rect.width / 2, rect.y + rect.height / 2, '父中心点', parent.x, parent.y)
+            rect.zIndex = 2
+            // rect.centerPoint = { x: rect.x + rect.width / 2, y: rect.y + rect.height }
+            console.log('矩形宽高', rect.width, rect.height, rect.x, rect.y)
+            // console.log('中心点', rect.x + rect.width / 2, rect.y + rect.height / 2, '父中心点', parent.x, parent.y)
             switch (direction) {
                 case 'LEFTTOP':
                     rect.symmetryDirection = 'RIGHTBOTTOM'
@@ -401,21 +415,21 @@ export default {
         drawFocusBorderForCircle (graphics) {
             let borderArr = []
             // console.log('绘制边框', graphics.width, graphics.height, graphics.x, graphics.y)
-            let dx = graphics.width / 2 - 2
-            let dy = graphics.height / 2 - 2
-            let line1 = this.drawDash({ x: graphics.x - dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y - dy }, 2, 'TOP')
-            let line2 = this.drawDash({ x: graphics.x + dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y + dy }, 2, 'RIGHT')
-            let line3 = this.drawDash({ x: graphics.x + dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y + dy }, 2, 'BOTTOM')
-            let line4 = this.drawDash({ x: graphics.x - dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y - dy }, 2, 'LEFT')
+            let dx = graphics.width / 2
+            let dy = graphics.height / 2
+            let line1 = this.drawDash({ x: graphics.x - dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y - dy }, 'TOP')
+            let line2 = this.drawDash({ x: graphics.x + dx, y: graphics.y - dy }, { x: graphics.x + dx, y: graphics.y + dy }, 'RIGHT')
+            let line3 = this.drawDash({ x: graphics.x + dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y + dy }, 'BOTTOM')
+            let line4 = this.drawDash({ x: graphics.x - dx, y: graphics.y + dy }, { x: graphics.x - dx, y: graphics.y - dy }, 'LEFT')
             
             // scalePoint1 = this.drawCir({ x: graphics.x - graphics.width / 2, y: graphics.y - graphics.width / 2 })
             // scalePoint2 = this.drawCir({ x: graphics.x + graphics.width / 2, y: graphics.y - graphics.width / 2 })
             // scalePoint3 = this.drawCir({ x: graphics.x + graphics.width / 2, y: graphics.y + graphics.width / 2 })
             // scalePoint4 = this.drawCir({ x: graphics.x - graphics.width / 2, y: graphics.y + graphics.width / 2 })
-            dx = graphics.width / 2 - 3
-            dy = graphics.height / 2 + 3
-            let dm = graphics.width / 2 + 3
-            let dn = graphics.height / 2 - 3
+            dx = graphics.width / 2 - 3.5 + 1
+            dy = graphics.height / 2 + 3.5
+            let dm = graphics.width / 2 + 3.5
+            let dn = graphics.height / 2 - 3.5 + 1
             let scalePoint1 = this.drawRect(graphics.x - dm, graphics.y - dy, 6, 6, 'LEFTTOP', graphics)
             let scalePoint2 = this.drawRect(graphics.x + dx, graphics.y - dy, 6, 6, 'RIGHTTOP', graphics)
             let scalePoint3 = this.drawRect(graphics.x + dx, graphics.y + dn, 6, 6, 'RIGHTBOTTOM', graphics)
@@ -426,17 +440,17 @@ export default {
         // 绘制聚焦边框(矩形)
         drawFocusBorderForRect (graphics) {
             let borderArr = []
-            let d = 2
-            let line1 = this.drawDash({ x: graphics.x + d, y: graphics.y }, { x: graphics.x + graphics.width - d, y: graphics.y }, 1, 'TOP')
-            let line2 = this.drawDash({ x: graphics.x + graphics.width, y: graphics.y + d }, { x: graphics.x + graphics.width, y: graphics.y + graphics.height - d }, 1, 'RIGHT')
-            let line3 = this.drawDash({ x: graphics.x + graphics.width - d, y: graphics.y + graphics.height }, { x: graphics.x + d, y: graphics.y + graphics.height }, 1, 'BOTTOM')
-            let line4 = this.drawDash({ x: graphics.x, y: graphics.y + graphics.height - d }, { x: graphics.x, y: graphics.y + d }, 1, 'LEFT')
+            // let d = 2
+            let line1 = this.drawDash({ x: graphics.x, y: graphics.y }, { x: graphics.x + graphics.width, y: graphics.y },'TOP')
+            let line2 = this.drawDash({ x: graphics.x + graphics.width, y: graphics.y }, { x: graphics.x + graphics.width, y: graphics.y + graphics.height }, 'RIGHT')
+            let line3 = this.drawDash({ x: graphics.x + graphics.width, y: graphics.y + graphics.height }, { x: graphics.x, y: graphics.y + graphics.height }, 'BOTTOM')
+            let line4 = this.drawDash({ x: graphics.x, y: graphics.y + graphics.height }, { x: graphics.x, y: graphics.y }, 'LEFT')
             
-            d = 3
+            let d = 3.5
             let scalePoint1 = this.drawRect(graphics.x - d, graphics.y - d, 6, 6, 'LEFTTOP', graphics)
-            let scalePoint2 = this.drawRect(graphics.x + graphics.width - d, graphics.y - d, 6, 6, 'RIGHTTOP', graphics)
-            let scalePoint3 = this.drawRect(graphics.x + graphics.width - d, graphics.y + graphics.height - d, 6, 6, 'RIGHTBOTTOM', graphics)
-            let scalePoint4 = this.drawRect(graphics.x - d, graphics.y + graphics.height - d, 6, 6, 'LEFTBOTTOM', graphics)
+            let scalePoint2 = this.drawRect(graphics.x + graphics.width - d + 1, graphics.y - d, 6, 6, 'RIGHTTOP', graphics)
+            let scalePoint3 = this.drawRect(graphics.x + graphics.width - d + 1, graphics.y + graphics.height - d + 1, 6, 6, 'RIGHTBOTTOM', graphics)
+            let scalePoint4 = this.drawRect(graphics.x - d, graphics.y + graphics.height - d + 1, 6, 6, 'LEFTBOTTOM', graphics)
             borderArr.push(line1, line2, line3, line4, scalePoint1, scalePoint2, scalePoint3, scalePoint4)
             return borderArr
         },
