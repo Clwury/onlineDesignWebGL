@@ -64,10 +64,10 @@ export default {
                     },
                     {
                         id: 'rect1',
-                        x: 18,
-                        y: 18,
-                        width: 5,
-                        height: 5,
+                        x: 16.5,
+                        y: 16.5,
+                        width: 10,
+                        height: 10,
                         type: 'Rectangle',
                         color: 0xc4c4c4,
                         scale: {
@@ -411,6 +411,11 @@ export default {
             // this.container.addChild(rect)
             return rect
         },
+        // 绘制可拖动区域
+        // drawWhirlArea (x, y, direction) {
+        //     let container1 = new Container()
+
+        // },
         // 绘制聚焦边框(圆形)
         drawFocusBorderForCircle (graphics) {
             let borderArr = []
@@ -495,13 +500,72 @@ export default {
             graphics.on('pointerout', () => {
                 this.cursorStatus = ''
             })
-            graphics.on('pointerdown', (event) => {
+            graphics.on('pointerdown', () => {
                 dragStatus = true
-                startPoint = {
-                    x: event.data.getLocalPosition(this.container).x,
-                    y: event.data.getLocalPosition(this.container).y
+                // startPoint = {
+                    // x: event.data.getLocalPosition(this.container).x,
+                    // y: event.data.getLocalPosition(this.container).y
                     // x: graphics.centerPoint.x,
                     // y: graphics.centerPoint.y
+                // }
+                switch (direction) {
+                    case 'LEFTTOP':
+                        if (parent.type === 'Rectangle' || parent.type === 'Image') {
+                            startPoint = {
+                                x: parent.x,
+                                y: parent.y
+                            }
+                        } else if (parent.type === 'Circle') {
+                            startPoint = {
+                                x: parent.x - parent.width / 2,
+                                y: parent.y - parent.height / 2
+                            }
+                        }
+
+                        break;
+                    case 'RIGHTTOP':
+                        if (parent.type === 'Rectangle' || parent.type === 'Image') {
+                            startPoint = {
+                                x: parent.x + parent.width,
+                                y: parent.y
+                            }
+                        } else if (parent.type === 'Circle') {
+                            startPoint = {
+                                x: parent.x + parent.width / 2,
+                                y: parent.y - parent.height / 2
+                            }
+                        }
+                        
+                        break;
+                    case 'RIGHTBOTTOM':
+                        if (parent.type === 'Rectangle' || parent.type === 'Image') {
+                            startPoint = {
+                                x: parent.x + parent.width,
+                                y: parent.y + parent.height
+                            }
+                        } else if (parent.type === 'Circle') {
+                            startPoint = {
+                                x: parent.x + parent.width / 2,
+                                y: parent.y + parent.height / 2
+                            }
+                        }
+                        
+                        break;
+                    case 'LEFTBOTTOM':
+                        if (parent.type === 'Rectangle' || parent.type === 'Image') {
+                            startPoint = {
+                                x: parent.x,
+                                y: parent.y + parent.height
+                            }
+                        } else if (parent.type === 'Circle') {
+                            startPoint = {
+                                x: parent.x - parent.width / 2,
+                                y: parent.y + parent.height / 2
+                            }
+                        }
+                        
+                        break;
+                
                 }
                 console.log(startPoint)
             })
@@ -514,6 +578,7 @@ export default {
                         x: event.data.getLocalPosition(this.container).x,
                         y: event.data.getLocalPosition(this.container).y
                     }
+                    // console.log(currentPoint)
                     let dx = currentPoint.x - startPoint.x
                     let dy = currentPoint.y - startPoint.y
                     console.log(parent)
@@ -601,7 +666,7 @@ export default {
         },
         // 计算边框缩放位置
         computeBorderScaledPosition (graphics, direction, dx, dy) {
-            let alignment = graphics.type === 'Circle' ? 2 : 1
+            let alignment = 1
             let d = this.focusBorder.get(graphics.name)
             for (let index = 4; index < d.length; index++) {
                 const e = d[index]
@@ -628,7 +693,7 @@ export default {
                     console.log('线', beforeStart, beforeEnd)
                     if (lineDirection === 'RIGHT') {
                         let line2 = new Graphics()
-                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.lineStyle(1, 0x18a0fb, 1, alignment)
                         line2.start = { x: beforeStart.x, y: beforeStart.y + dy }
                         line2.end = { x: beforeEnd.x, y: beforeEnd.y }
                         line2.direction = lineDirection
@@ -638,7 +703,7 @@ export default {
                     }
                     if (lineDirection === 'BOTTOM') {
                         let line3 = new Graphics()
-                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.lineStyle(1, 0x18a0fb, 1, alignment)
                         line3.start = { x: beforeStart.x, y: beforeStart.y }
                         line3.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
                         line3.direction = lineDirection
@@ -648,7 +713,7 @@ export default {
                     }
                     if (lineDirection === 'LEFT') {
                         let line4 = new Graphics()
-                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.lineStyle(1, 0x18a0fb, 1, alignment)
                         line4.start = { x: beforeStart.x + dx, y: beforeStart.y }
                         line4.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
                         line4.direction = lineDirection
@@ -658,7 +723,7 @@ export default {
                     }
                     if (lineDirection === 'TOP') {
                         let line1 = new Graphics()
-                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.lineStyle(1, 0x18a0fb, 1, alignment)
                         line1.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
                         line1.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
                         line1.direction = lineDirection
@@ -670,7 +735,7 @@ export default {
                 case 'RIGHTTOP':
                     if (lineDirection === 'LEFT') {
                         let line4 = new Graphics()
-                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.lineStyle(1, 0x18a0fb, 1, alignment)
                         line4.start = { x: beforeStart.x, y: beforeStart.y }
                         line4.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
                         line4.direction = lineDirection
@@ -680,7 +745,7 @@ export default {
                     }
                     if (lineDirection === 'BOTTOM') {
                         let line3 = new Graphics()
-                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.lineStyle(1, 0x18a0fb, 1, alignment)
                         line3.start = { x: beforeStart.x + dx, y: beforeStart.y }
                         line3.end = { x: beforeEnd.x, y: beforeEnd.y }
                         line3.direction = lineDirection
@@ -690,7 +755,7 @@ export default {
                     }
                     if (lineDirection === 'RIGHT') {
                         let line2 = new Graphics()
-                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.lineStyle(1, 0x18a0fb, 1, alignment)
                         line2.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
                         line2.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
                         line2.direction = lineDirection
@@ -700,7 +765,7 @@ export default {
                     }
                     if (lineDirection === 'TOP') {
                         let line1 = new Graphics()
-                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.lineStyle(1, 0x18a0fb, 1, alignment)
                         line1.start = { x: beforeStart.x, y: beforeStart.y + dy }
                         line1.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
                         line1.direction = lineDirection
@@ -712,7 +777,7 @@ export default {
                 case 'RIGHTBOTTOM':
                     if (lineDirection === 'LEFT') {
                         let line4 = new Graphics()
-                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.lineStyle(1, 0x18a0fb, 1, alignment)
                         line4.start = { x: beforeStart.x, y: beforeStart.y + dy }
                         line4.end = { x: beforeEnd.x, y: beforeEnd.y }
                         line4.direction = lineDirection
@@ -722,7 +787,7 @@ export default {
                     }
                     if (lineDirection === 'TOP') {
                         let line1 = new Graphics()
-                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.lineStyle(1, 0x18a0fb, 1, alignment)
                         line1.start = { x: beforeStart.x, y: beforeStart.y }
                         line1.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
                         line1.direction = lineDirection
@@ -732,7 +797,7 @@ export default {
                     }
                     if (lineDirection === 'RIGHT') {
                         let line2 = new Graphics()
-                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.lineStyle(1, 0x18a0fb, 1, alignment)
                         line2.start = { x: beforeStart.x + dx, y: beforeStart.y }
                         line2.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
                         line2.direction = lineDirection
@@ -742,7 +807,7 @@ export default {
                     }
                     if (lineDirection === 'BOTTOM') {
                         let line3 = new Graphics()
-                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.lineStyle(1, 0x18a0fb, 1, alignment)
                         line3.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
                         line3.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
                         line3.direction = lineDirection
@@ -754,7 +819,7 @@ export default {
                 case 'LEFTBOTTOM':
                     if (lineDirection === 'RIGHT') {
                         let line2 = new Graphics()
-                        line2.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line2.lineStyle(1, 0x18a0fb, 1, alignment)
                         line2.start = { x: beforeStart.x, y: beforeStart.y }
                         line2.end = { x: beforeEnd.x, y: beforeEnd.y + dy }
                         line2.direction = lineDirection
@@ -764,7 +829,7 @@ export default {
                     }
                     if (lineDirection === 'TOP') {
                         let line1 = new Graphics()
-                        line1.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line1.lineStyle(1, 0x18a0fb, 1, alignment)
                         line1.start = { x: beforeStart.x + dx, y: beforeStart.y }
                         line1.end = { x: beforeEnd.x, y: beforeEnd.y }
                         line1.direction = lineDirection
@@ -774,7 +839,7 @@ export default {
                     }
                     if (lineDirection === 'LEFT') {
                         let line4 = new Graphics()
-                        line4.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line4.lineStyle(1, 0x18a0fb, 1, alignment)
                         line4.start = { x: beforeStart.x + dx, y: beforeStart.y + dy }
                         line4.end = { x: beforeEnd.x + dx, y: beforeEnd.y }
                         line4.direction = lineDirection
@@ -784,7 +849,7 @@ export default {
                     }
                     if (lineDirection === 'BOTTOM') {
                         let line3 = new Graphics()
-                        line3.lineStyle(1.5, 0x18a0fb, 1, alignment)
+                        line3.lineStyle(1, 0x18a0fb, 1, alignment)
                         line3.start = { x: beforeStart.x, y: beforeStart.y + dy }
                         line3.end = { x: beforeEnd.x + dx, y: beforeEnd.y + dy }
                         line3.direction = lineDirection
